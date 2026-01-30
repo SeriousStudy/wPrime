@@ -1,4 +1,6 @@
 export default async function handler(req, res) {
+  console.log("ENV:", process.env.GEMINI_API_KEY);
+
   if (req.method !== "POST") {
     return res.status(405).send("Only POST allowed");
   }
