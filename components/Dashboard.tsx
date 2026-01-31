@@ -208,3 +208,4 @@ const Dashboard: React.FC<DashboardProps> = ({ progress, unlockedDay, onSelectDa
 };
 
 export default Dashboard;
+
