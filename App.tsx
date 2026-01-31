@@ -39,10 +39,13 @@ const App: React.FC = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
 
+  // Improved check for browser environments where 'process' might be shimmed or missing
   const isApiReady = useMemo(() => {
     try {
-      return !!(typeof process !== 'undefined' && process.env && process.env.API_KEY);
-    } catch {
+      // Direct check that won't throw if process is undefined
+      const key = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : (window as any).process?.env?.API_KEY;
+      return !!key && key.length > 5;
+    } catch (e) {
       return false;
     }
   }, []);
@@ -99,7 +102,8 @@ const App: React.FC = () => {
   if (!isLoggedIn) return <Login onLogin={(p) => { setUserProfile(p); localStorage.setItem('user_profile', JSON.stringify(p)); localStorage.setItem('is_logged_in', 'true'); setIsLoggedIn(true); }} isDarkMode={isDarkMode} />;
   if (!progress) return null;
 
-  if (!isApiReady) {
+  // We only show the offline block if the API is strictly missing and hasn't been bypassed
+  if (!isApiReady && !localStorage.getItem('api_bypass')) {
     return (
       <div className={`fixed inset-0 z-[1000] flex flex-col items-center justify-center p-6 ${isDarkMode ? 'bg-black text-white' : 'bg-white text-black'}`}>
         <div className="max-w-xl w-full space-y-8 animate-pop">
@@ -107,36 +111,28 @@ const App: React.FC = () => {
               <div className="w-16 h-16 bg-red-600 rounded-2xl flex items-center justify-center text-white text-3xl font-black">!</div>
               <div>
                 <h2 className="text-3xl font-black uppercase tracking-tighter">System Offline</h2>
-                <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.4em]">Environmental Variable Failure</p>
+                <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.4em]">Connection Logic Pending</p>
               </div>
            </div>
 
            <div className="bg-red-600/5 border border-red-600/20 p-8 rounded-[2.5rem] space-y-6">
               <p className="text-sm font-bold leading-relaxed opacity-70">
-                Vercel cannot find your <span className="text-red-600 font-black">API_KEY</span>. To fix this, follow these steps exactly:
+                The <span className="text-red-600 font-black uppercase tracking-widest">API_KEY</span> is not being detected in the browser. 
               </p>
-              <ol className="space-y-4">
-                 {[
-                   { id: "1", t: "Go to your Vercel Project Dashboard" },
-                   { id: "2", t: "Settings > Environment Variables" },
-                   { id: "3", t: "Key: 'API_KEY' (Must be Caps)" },
-                   { id: "4", t: "Value: Your Gemini API Key (AIza...)" },
-                   { id: "5", t: "CRITICAL: Go to 'Deployments' and click REDEPLOY" }
-                 ].map(s => (
-                   <li key={s.id} className="flex items-center space-x-4">
-                      <span className="w-6 h-6 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center">{s.id}</span>
-                      <span className="text-xs font-bold uppercase tracking-tight">{s.t}</span>
-                   </li>
-                 ))}
-              </ol>
+              <div className="p-4 bg-zinc-100 dark:bg-zinc-900 rounded-xl text-[10px] font-mono opacity-60">
+                Check: Vercel > Settings > Env Vars > Key: API_KEY
+              </div>
            </div>
 
            <div className="flex flex-col sm:flex-row gap-4">
-              <button onClick={() => window.location.reload()} className="flex-1 py-6 bg-red-600 text-white rounded-full font-black text-xs uppercase tracking-widest shadow-xl shadow-red-600/30">
+              <button onClick={() => window.location.reload()} className="flex-1 py-6 bg-blue-600 text-white rounded-full font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/30">
                 Sync & Refresh
               </button>
-              <button onClick={() => window.open('https://aistudio.google.com/app/apikey', '_blank')} className="flex-1 py-6 border border-current rounded-full font-black text-xs uppercase tracking-widest">
-                Get New Key
+              <button 
+                onClick={() => { localStorage.setItem('api_bypass', 'true'); window.location.reload(); }}
+                className="flex-1 py-6 border border-current rounded-full font-black text-xs uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity"
+              >
+                I added it, let me in
               </button>
            </div>
         </div>
@@ -157,7 +153,7 @@ const App: React.FC = () => {
         onSearchClick={() => setSearchOpen(true)}
         onLiveClick={() => setCurrentView({ type: 'live' })}
         onAboutClick={() => setAboutOpen(true)}
-        isApiReady={isApiReady}
+        isApiReady={isApiReady || !!localStorage.getItem('api_bypass')}
       />
       
       <main className="w-full mx-auto relative">
